@@ -7,6 +7,20 @@ const QrItem = require("../models/QrItem");
 
 const getAppUrl = (req) => process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
 const getQrLink = (req, token) => `${getAppUrl(req)}/q/${token}`;
+const getUploadFilePath = (filename) => path.join(__dirname, "..", "uploads", "qr", filename);
+
+const removeFileIfExists = async (filename) => {
+  if (!filename) return;
+  const filePath = getUploadFilePath(filename);
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.error("Faylni o'chirishda xato:", filePath, error.message);
+      throw error;
+    }
+  }
+};
 
 const buildCreatedAtRange = (startDateText, endDateText) => {
   if (!startDateText && !endDateText) return null;
@@ -95,22 +109,27 @@ const createQrItem = async (req, res, next) => {
 
     if (!name || !req.file) {
       if (req.file) {
-        await fs.unlink(req.file.path).catch(() => {});
+        await removeFileIfExists(req.file.filename);
       }
       return res.redirect(`/admin/qr?modal=create&error=${encodeURIComponent("Nom va fayl majburiy.")}&createName=${encodeURIComponent(name)}`);
     }
 
-    await QrItem.create({
-      name,
-      qrToken: crypto.randomBytes(16).toString("hex"),
-      file: {
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype || "application/octet-stream",
-        size: req.file.size || 0
-      },
-      createdBy: req.session.adminId
-    });
+    try {
+      await QrItem.create({
+        name,
+        qrToken: crypto.randomBytes(16).toString("hex"),
+        file: {
+          filename: req.file.filename,
+          originalName: req.file.originalname,
+          mimeType: req.file.mimetype || "application/octet-stream",
+          size: req.file.size || 0
+        },
+        createdBy: req.session.adminId
+      });
+    } catch (dbError) {
+      await removeFileIfExists(req.file.filename);
+      throw dbError;
+    }
 
     return res.redirect("/admin/qr");
   } catch (error) {
@@ -125,14 +144,14 @@ const updateQrItem = async (req, res, next) => {
 
     if (!item) {
       if (req.file) {
-        await fs.unlink(req.file.path).catch(() => {});
+        await removeFileIfExists(req.file.filename);
       }
       return res.status(404).render("errors/404", { title: "QR topilmadi" });
     }
 
     if (!name) {
       if (req.file) {
-        await fs.unlink(req.file.path).catch(() => {});
+        await removeFileIfExists(req.file.filename);
       }
       return res.redirect(
         `/admin/qr?modal=edit&editId=${item._id}&error=${encodeURIComponent("Nom majburiy.")}&editName=${encodeURIComponent(name)}`
@@ -142,14 +161,14 @@ const updateQrItem = async (req, res, next) => {
     item.name = name;
 
     if (req.file) {
-      const oldFilePath = path.join(__dirname, "..", "uploads", "qr", item.file.filename);
+      const oldFilename = item.file.filename;
       item.file = {
         filename: req.file.filename,
         originalName: req.file.originalname,
         mimeType: req.file.mimetype || "application/octet-stream",
         size: req.file.size || 0
       };
-      await fs.unlink(oldFilePath).catch(() => {});
+      await removeFileIfExists(oldFilename);
     }
 
     await item.save();
@@ -166,8 +185,7 @@ const deleteQrItem = async (req, res, next) => {
       return res.redirect("/admin/qr");
     }
 
-    const filePath = path.join(__dirname, "..", "uploads", "qr", item.file.filename);
-    await fs.unlink(filePath).catch(() => {});
+    await removeFileIfExists(item.file.filename);
     await item.deleteOne();
 
     return res.redirect("/admin/qr");
