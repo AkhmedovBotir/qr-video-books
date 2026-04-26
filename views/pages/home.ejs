@@ -1,0 +1,42 @@
+<section class="space-y-6">
+  <div class="rounded-2xl border border-emerald-700/40 bg-emerald-900/20 p-6">
+    <p class="text-sm uppercase tracking-wider text-emerald-300">Tayyor loyiha</p>
+    <h2 class="mt-2 text-3xl font-bold"><%= projectName %></h2>
+    <p class="mt-3 text-slate-300">
+      Server qismi: Node.js + Express + MongoDB. Interfeys qismi: EJS + TailwindCSS.
+    </p>
+  </div>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    <article class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+      <h3 class="text-lg font-semibold">Server qismi</h3>
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-300">
+        <li>Boshqaruvchilar / yo'nalishlar / modellar strukturasi</li>
+        <li>MongoDB ulanish konfiguratsiyasi</li>
+        <li>Xatolik sahifalari (404, 500)</li>
+      </ul>
+    </article>
+
+    <article class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+      <h3 class="text-lg font-semibold">Interfeys qismi</h3>
+      <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-300">
+        <li>EJS qolip va sahifa bo'linishi</li>
+        <li>TailwindCSS yig'ish/kuzatish buyruqlari</li>
+        <li>`public` statik fayllari qo'llab-quvvatlanadi</li>
+      </ul>
+    </article>
+  </div>
+
+  <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+    <h3 class="text-lg font-semibold">Admin kirish</h3>
+    <p class="mt-2 text-slate-300">
+      Admin panelga kirish uchun foydalanuvchi nomi va parol orqali tekshiruv qilinadi.
+    </p>
+    <a
+      href="/admin/login"
+      class="mt-4 inline-flex rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white transition hover:bg-emerald-500"
+    >
+      Kirish sahifasiga o'tish
+    </a>
+  </div>
+</section>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+      integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100" oncontextmenu="return false;">
+    <main class="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-8 md:py-10">
+      <section class="w-full rounded-2xl border border-slate-800 bg-slate-900 p-4 md:p-6">
+        <h1 class="text-center text-2xl font-bold md:text-3xl"><%= item.name %></h1>
+
+        <% if ((item.file.mimeType || "").startsWith("video/")) { %>
+          <div class="mx-auto mt-5 w-full max-w-4xl overflow-hidden rounded-xl border border-slate-800 bg-black">
+            <video
+              id="qrVideo"
+              class="mx-auto h-[70vh] max-h-[70vh] min-h-[280px] w-full object-contain transition duration-300"
+              autoplay
+              loop
+              playsinline
+              preload="metadata"
+              disablePictureInPicture
+              controlsList="nodownload noplaybackrate nofullscreen"
+            >
+              <source src="/q/<%= item.qrToken %>/stream" type="<%= item.file.mimeType %>" />
+              Brauzer videoni qo'llab-quvvatlamaydi.
+            </video>
+          </div>
+
+          <div class="mx-auto mt-4 flex w-full max-w-4xl items-center justify-center gap-3">
+            <button
+              id="playPauseBtn"
+              type="button"
+              class="rounded-lg bg-emerald-600 px-4 py-2 text-xl font-semibold text-white hover:bg-emerald-500"
+              aria-label="Ijroni boshqarish"
+            >
+              <i class="fa-solid fa-pause"></i>
+            </button>
+            <input
+              id="seekBar"
+              type="range"
+              value="0"
+              min="0"
+              step="0.1"
+              class="h-2 w-full max-w-xl cursor-pointer accent-emerald-500"
+            />
+            <span id="timeLabel" class="min-w-24 text-right text-xs text-slate-300">00:00 / 00:00</span>
+          </div>
+        <% } else { %>
+          <div class="mx-auto mt-5 max-w-3xl rounded-xl border border-slate-700 bg-slate-950 p-4 text-slate-300">
+            Bu QR uchun fayl turi video emas. Ushbu turdagi faylni himoyalangan playerda ko'rsatish mavjud emas.
+          </div>
+        <% } %>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const video = document.getElementById("qrVideo");
+        const playPauseBtn = document.getElementById("playPauseBtn");
+        const seekBar = document.getElementById("seekBar");
+        const timeLabel = document.getElementById("timeLabel");
+
+        if (!video || !playPauseBtn || !seekBar || !timeLabel) return;
+
+        const formatTime = (seconds) => {
+          if (!Number.isFinite(seconds)) return "00:00";
+          const m = Math.floor(seconds / 60);
+          const s = Math.floor(seconds % 60);
+          return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+        };
+
+        const syncUi = () => {
+          if (video.paused) {
+            playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+            video.classList.add("blur-[1.5px]", "brightness-75");
+          } else {
+            playPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+            video.classList.remove("blur-[1.5px]", "brightness-75");
+          }
+
+          const duration = Number.isFinite(video.duration) ? video.duration : 0;
+          seekBar.max = duration || 0;
+          seekBar.value = video.currentTime || 0;
+          timeLabel.textContent = `${formatTime(video.currentTime)} / ${formatTime(duration)}`;
+        };
+
+        playPauseBtn.addEventListener("click", async () => {
+          if (video.paused) {
+            await video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+          syncUi();
+        });
+
+        seekBar.addEventListener("input", () => {
+          video.currentTime = Number(seekBar.value || 0);
+          syncUi();
+        });
+
+        video.addEventListener("play", syncUi);
+        video.addEventListener("pause", syncUi);
+        video.addEventListener("timeupdate", syncUi);
+        video.addEventListener("loadedmetadata", syncUi);
+        video.muted = false;
+        video.volume = 1;
+        video.play().catch(() => {});
+        syncUi();
+      })();
+    </script>
+  </body>
+</html>

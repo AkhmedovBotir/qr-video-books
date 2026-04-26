@@ -1,0 +1,427 @@
+<section class="space-y-6">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-2xl font-bold">QR ro'yxati</h2>
+      <p class="text-sm text-slate-400">Har bir QR uchun bitta nom va bitta fayl biriktiriladi.</p>
+    </div>
+    <button
+      type="button"
+      data-modal-open="createModal"
+      class="inline-flex rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-500"
+    >
+      + Yangi QR
+    </button>
+  </div>
+
+  <form action="/admin/qr" method="GET" class="grid gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-4">
+    <div class="md:col-span-2">
+      <label class="mb-1 block text-sm text-slate-300">Qidiruv</label>
+      <input
+        type="text"
+        name="search"
+        value="<%= filters?.search || '' %>"
+        placeholder="QR nomi bo'yicha qidirish"
+        class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+      />
+    </div>
+    <div>
+      <label class="mb-1 block text-sm text-slate-300">Boshlanish sanasi</label>
+      <input type="date" name="startDate" value="<%= filters?.startDate || '' %>" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+    </div>
+    <div>
+      <label class="mb-1 block text-sm text-slate-300">Tugash sanasi</label>
+      <input type="date" name="endDate" value="<%= filters?.endDate || '' %>" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+    </div>
+    <div class="md:col-span-4 flex flex-wrap gap-2">
+      <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">Filtrlash</button>
+      <a href="/admin/qr" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700">Tozalash</a>
+    </div>
+  </form>
+
+  <% if (ui.error && ui.modal === "create") { %>
+    <div class="rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-2 text-sm text-rose-200">
+      <%= ui.error %>
+    </div>
+  <% } %>
+
+  <% if (!items.length) { %>
+    <div class="rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-300">
+      Hali QR yozuvlari yo'q. Birinchi QR ni yarating.
+    </div>
+  <% } %>
+
+  <div class="grid gap-4 lg:grid-cols-2">
+    <% items.forEach((item) => { %>
+      <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div class="space-y-1">
+            <h3 class="text-xl font-semibold"><%= item.name %></h3>
+            <p class="text-xs text-slate-400">Fayl: <%= item.file.originalName %></p>
+            <p class="text-xs text-slate-400">Tur: <%= item.file.mimeType %></p>
+            <a href="<%= item.qrLink %>" target="_blank" class="text-sm text-emerald-300 hover:text-emerald-200">
+              QR manzilini ochish
+            </a>
+          </div>
+          <img src="<%= item.qrImage %>" alt="QR Code" class="h-28 w-28 rounded-lg bg-white p-1" />
+        </div>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-modal-open="viewModal-<%= item._id %>"
+            class="rounded-md bg-indigo-600 px-3 py-2 text-sm hover:bg-indigo-500"
+          >
+            Ko'rish
+          </button>
+          <button
+            type="button"
+            data-modal-open="editModal-<%= item._id %>"
+            class="rounded-md bg-amber-600 px-3 py-2 text-sm hover:bg-amber-500"
+          >
+            Tahrirlash
+          </button>
+          <form action="/admin/qr/<%= item._id %>?_method=DELETE" method="POST">
+            <button type="submit" class="rounded-md bg-rose-600 px-3 py-2 text-sm hover:bg-rose-500">O'chirish</button>
+          </form>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+
+  <div id="createModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/70 p-3 md:p-4">
+    <div class="mx-auto my-4 w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 p-4 md:p-5">
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-xl font-semibold">Yangi QR yaratish</h3>
+        <button type="button" data-modal-close="createModal" class="rounded bg-slate-800 px-2 py-1">X</button>
+      </div>
+      <form action="/admin/qr" method="POST" enctype="multipart/form-data" class="space-y-4 js-upload-form">
+        <div>
+          <label class="mb-1 block text-sm">Nomi</label>
+          <input
+            name="name"
+            required
+            value="<%= ui.createName || '' %>"
+            class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+          />
+        </div>
+        <div>
+          <p class="mb-2 block text-sm">Fayl</p>
+          <div
+            class="upload-dropzone flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-600 bg-slate-950 px-4 py-8 text-center"
+            data-dropzone
+            data-input-id="createFileInput"
+            data-preview-id="createPreview"
+            data-filename-id="createFileName"
+            data-required="true"
+          >
+            <p class="text-sm font-medium text-slate-200">Faylni shu yerga tashlang yoki bosib tanlang</p>
+            <p id="createFileName" class="text-xs text-slate-400">Hali fayl tanlanmagan</p>
+            <input id="createFileInput" type="file" name="file" required class="hidden" />
+          </div>
+          <video id="createPreview" class="mt-3 hidden h-40 w-full rounded-lg border border-slate-700 bg-black object-contain" controls></video>
+          <p class="mt-1 text-xs text-slate-500">Barcha fayl turlari qo'llab-quvvatlanadi.</p>
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-500">
+            Yaratish
+          </button>
+          <button type="button" data-modal-close="createModal" class="rounded-lg bg-slate-800 px-4 py-2 hover:bg-slate-700">
+            Bekor
+          </button>
+        </div>
+        <div class="hidden js-upload-progress space-y-2">
+          <p class="text-sm text-slate-300 js-upload-text">Yuklanmoqda... 0%</p>
+          <div class="h-2 w-full rounded bg-slate-800">
+            <div class="js-upload-bar h-2 rounded bg-emerald-500 transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <% items.forEach((item) => { %>
+    <div id="viewModal-<%= item._id %>" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/70 p-3 md:p-4">
+      <div class="mx-auto my-4 w-full max-w-6xl rounded-2xl border border-slate-700 bg-slate-900 p-4 md:p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold md:text-xl">QR ko'rish: <%= item.name %></h3>
+          <button type="button" data-modal-close="viewModal-<%= item._id %>" class="rounded bg-slate-800 px-2 py-1">X</button>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="rounded-xl border border-slate-800 bg-black p-2">
+            <% if ((item.file.mimeType || "").startsWith("video/")) { %>
+              <video
+                class="h-[34vh] w-full rounded-lg object-contain sm:h-[42vh] md:h-[50vh]"
+                autoplay
+                controls
+                playsinline
+                preload="metadata"
+                controlsList="nodownload noplaybackrate"
+              >
+                <source src="/q/<%= item.qrToken %>/stream" type="<%= item.file.mimeType %>" />
+              </video>
+            <% } else { %>
+              <div class="flex h-[34vh] items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-300 sm:h-[42vh] md:h-[50vh]">
+                Bu fayl turi video emas.
+              </div>
+            <% } %>
+          </div>
+
+          <div class="space-y-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-400">Nomi</p>
+              <p class="text-lg font-semibold"><%= item.name %></p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-400">Fayl</p>
+              <p class="text-sm text-slate-300"><%= item.file.originalName %></p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-slate-400">Tur</p>
+              <p class="text-sm text-slate-300"><%= item.file.mimeType %></p>
+            </div>
+            <div>
+              <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">QR</p>
+              <img src="<%= item.qrImage %>" alt="QR Code" class="h-36 w-36 rounded-lg bg-white p-1" />
+              <a
+                href="<%= item.qrImage %>"
+                download="qr-<%= item.name.replace(/[^a-zA-Z0-9_-]/g, '-') %>.png"
+                class="mt-3 inline-block rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500"
+              >
+                QR rasmni yuklab olish
+              </a>
+            </div>
+            <a href="<%= item.qrLink %>" target="_blank" class="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+              Ommaviy oynada ochish
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="editModal-<%= item._id %>" class="fixed inset-0 z-50 hidden overflow-y-auto bg-black/70 p-3 md:p-4">
+      <div class="mx-auto my-4 w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 p-4 md:p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-xl font-semibold">QR tahrirlash</h3>
+          <button type="button" data-modal-close="editModal-<%= item._id %>" class="rounded bg-slate-800 px-2 py-1">X</button>
+        </div>
+        <% if (ui.error && ui.modal === "edit" && ui.editId === item._id.toString()) { %>
+          <div class="mb-4 rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-2 text-sm text-rose-200">
+            <%= ui.error %>
+          </div>
+        <% } %>
+        <form action="/admin/qr/<%= item._id %>?_method=PUT" method="POST" enctype="multipart/form-data" class="space-y-4 js-upload-form">
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-4 rounded-lg border border-slate-700 bg-slate-950 p-3">
+              <div>
+                <label class="mb-1 block text-sm">Nomi</label>
+                <input
+                  name="name"
+                  required
+                  value="<%= (ui.modal === 'edit' && ui.editId === item._id.toString() ? ui.editName : item.name) || '' %>"
+                  class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+                />
+              </div>
+              <div class="space-y-1 text-xs text-slate-400">
+                <p><span class="text-slate-300">Joriy fayl:</span> <%= item.file.originalName %></p>
+                <p><span class="text-slate-300">Tur:</span> <%= item.file.mimeType %></p>
+              </div>
+              <div class="flex gap-2">
+                <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-500">
+                  Saqlash
+                </button>
+                <button type="button" data-modal-close="editModal-<%= item._id %>" class="rounded-lg bg-slate-800 px-4 py-2 hover:bg-slate-700">
+                  Bekor
+                </button>
+              </div>
+              <div class="hidden js-upload-progress space-y-2">
+                <p class="text-sm text-slate-300 js-upload-text">Yuklanmoqda... 0%</p>
+                <div class="h-2 w-full rounded bg-slate-800">
+                  <div class="js-upload-bar h-2 rounded bg-emerald-500 transition-all duration-150" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="rounded-lg border border-slate-700 bg-slate-950 p-3">
+                <p class="mb-2 text-sm text-slate-300">Joriy video/fayl</p>
+                <% if ((item.file.mimeType || "").startsWith("video/")) { %>
+                  <video class="h-40 w-full rounded-lg bg-black object-contain" controls preload="metadata">
+                    <source src="/q/<%= item.qrToken %>/stream" type="<%= item.file.mimeType %>" />
+                  </video>
+                <% } else { %>
+                  <p class="text-sm text-slate-400"><%= item.file.originalName %></p>
+                <% } %>
+              </div>
+
+              <div>
+                <p class="mb-2 block text-sm">Yangi fayl bilan almashtirish (ixtiyoriy)</p>
+                <div
+                  class="upload-dropzone flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-600 bg-slate-950 px-4 py-8 text-center"
+                  data-dropzone
+                  data-input-id="editFileInput-<%= item._id %>"
+                  data-preview-id="editPreview-<%= item._id %>"
+                  data-filename-id="editFileName-<%= item._id %>"
+                  data-required="false"
+                >
+                  <p class="text-sm font-medium text-slate-200">Faylni shu yerga tashlang yoki bosib tanlang</p>
+                  <p id="editFileName-<%= item._id %>" class="text-xs text-slate-400">Hali yangi fayl tanlanmagan</p>
+                  <input id="editFileInput-<%= item._id %>" type="file" name="file" class="hidden" />
+                </div>
+                <video id="editPreview-<%= item._id %>" class="mt-3 hidden h-40 w-full rounded-lg border border-slate-700 bg-black object-contain" controls></video>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  <% }) %>
+</section>
+
+<div
+  id="qr-page-state"
+  data-modal="<%= ui.modal || '' %>"
+  data-edit-id="<%= ui.editId || '' %>"
+  class="hidden"
+></div>
+
+<script>
+  (() => {
+    const openButtons = document.querySelectorAll("[data-modal-open]");
+    const closeButtons = document.querySelectorAll("[data-modal-close]");
+    const dropzones = document.querySelectorAll("[data-dropzone]");
+    const uploadForms = document.querySelectorAll(".js-upload-form");
+
+    const openModal = (id) => {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.remove("hidden");
+      document.body.classList.add("overflow-hidden");
+    };
+
+    const closeModal = (id) => {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.classList.add("hidden");
+      if (!document.querySelector('[id$="Modal"]:not(.hidden), [id*="Modal-"]:not(.hidden)')) {
+        document.body.classList.remove("overflow-hidden");
+      }
+    };
+
+    const setFile = (input, fileNameNode, previewNode, file) => {
+      if (!file) return;
+      fileNameNode.textContent = file.name;
+      if (previewNode) {
+        if ((file.type || "").startsWith("video/")) {
+          previewNode.src = URL.createObjectURL(file);
+          previewNode.classList.remove("hidden");
+        } else {
+          previewNode.removeAttribute("src");
+          previewNode.classList.add("hidden");
+        }
+      }
+    };
+
+    dropzones.forEach((zone) => {
+      const input = document.getElementById(zone.dataset.inputId);
+      const preview = document.getElementById(zone.dataset.previewId);
+      const fileNameNode = document.getElementById(zone.dataset.filenameId);
+      if (!input || !fileNameNode) return;
+
+      zone.addEventListener("click", () => input.click());
+      zone.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        zone.classList.add("border-emerald-500");
+      });
+      zone.addEventListener("dragleave", () => zone.classList.remove("border-emerald-500"));
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        zone.classList.remove("border-emerald-500");
+        const [file] = event.dataTransfer.files;
+        if (!file) return;
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+        setFile(input, fileNameNode, preview, file);
+      });
+      input.addEventListener("change", () => {
+        const [file] = input.files || [];
+        setFile(input, fileNameNode, preview, file);
+      });
+    });
+
+    openButtons.forEach((button) => {
+      button.addEventListener("click", () => openModal(button.dataset.modalOpen));
+    });
+
+    closeButtons.forEach((button) => {
+      button.addEventListener("click", () => closeModal(button.dataset.modalClose));
+    });
+
+    uploadForms.forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        const progressWrap = form.querySelector(".js-upload-progress");
+        const progressText = form.querySelector(".js-upload-text");
+        const progressBar = form.querySelector(".js-upload-bar");
+
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.classList.add("opacity-70", "cursor-not-allowed");
+        }
+
+        if (progressWrap) {
+          progressWrap.classList.remove("hidden");
+        }
+
+        const xhr = new XMLHttpRequest();
+        xhr.open((form.method || "POST").toUpperCase(), form.action, true);
+
+        xhr.upload.onprogress = (progressEvent) => {
+          if (!progressEvent.lengthComputable) return;
+          const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+          if (progressText) progressText.textContent = `Yuklanmoqda... ${percent}%`;
+          if (progressBar) progressBar.style.setProperty("width", `${percent}%`, "important");
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 400) {
+            window.location.href = xhr.responseURL || "/admin/qr";
+            return;
+          }
+
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.classList.remove("opacity-70", "cursor-not-allowed");
+          }
+          if (progressText) progressText.textContent = "Yuklashda xatolik yuz berdi.";
+          if (progressBar) progressBar.style.setProperty("width", "0%", "important");
+        };
+
+        xhr.onerror = () => {
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.classList.remove("opacity-70", "cursor-not-allowed");
+          }
+          if (progressText) progressText.textContent = "Tarmoq xatosi. Qayta urinib ko'ring.";
+          if (progressBar) progressBar.style.setProperty("width", "0%", "important");
+        };
+
+        xhr.send(new FormData(form));
+      });
+    });
+
+    const pageState = document.getElementById("qr-page-state");
+    const pageModal = pageState?.dataset.modal || "";
+    const pageEditId = pageState?.dataset.editId || "";
+
+    if (pageModal === "create") {
+      openModal("createModal");
+    }
+    if (pageModal === "edit" && pageEditId) {
+      openModal(`editModal-${pageEditId}`);
+    }
+  })();
+</script>

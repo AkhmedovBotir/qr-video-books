@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body class="bg-slate-950 text-slate-100 min-h-screen">
+    <header class="border-b border-slate-800 bg-slate-900/70">
+      <div class="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between">
+        <a href="/" class="text-lg font-semibold text-emerald-300">QR Admin</a>
+
+        <% if (isAuthenticated) { %>
+          <nav class="flex flex-wrap items-center gap-2 text-sm">
+            <a href="/admin/dashboard" class="rounded-md px-3 py-2 hover:bg-slate-800">Boshqaruv paneli</a>
+            <a href="/admin/qr" class="rounded-md px-3 py-2 hover:bg-slate-800">QR ro'yxati</a>
+            <a href="/admin/analytics" class="rounded-md px-3 py-2 hover:bg-slate-800">Analitika</a>
+            <a href="/admin/qr?modal=create" class="rounded-md bg-emerald-700/70 px-3 py-2 hover:bg-emerald-600">
+              Yangi QR
+            </a>
+            <form action="/admin/logout" method="POST">
+              <button
+                type="submit"
+                class="rounded-md bg-rose-600 px-3 py-2 font-medium text-white transition hover:bg-rose-500"
+              >
+                Chiqish
+              </button>
+            </form>
+          </nav>
+        <% } else { %>
+          <a
+            href="/admin/login"
+            class="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+          >
+            Admin kirish
+          </a>
+        <% } %>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-8"><%- body %></main>
+  </body>
+</html>

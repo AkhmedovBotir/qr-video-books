@@ -1,0 +1,69 @@
+<section class="mx-auto w-full max-w-2xl space-y-6">
+  <div>
+    <h2 class="text-2xl font-bold"><%= isEdit ? "QR tahrirlash" : "Yangi QR yaratish" %></h2>
+    <p class="text-sm text-slate-400">
+      QR kodi o'zgarmaydi. Edit qilinganda ham QR manzili bir xil qoladi.
+    </p>
+  </div>
+
+  <div class="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+    <% if (errorMessage) { %>
+      <div class="mb-4 rounded-lg border border-rose-700 bg-rose-900/40 px-3 py-2 text-sm text-rose-200">
+        <%= errorMessage %>
+      </div>
+    <% } %>
+
+    <% if (isEdit && item) { %>
+      <div class="mb-5 grid gap-4 sm:grid-cols-2">
+        <img src="<%= item.qrImage %>" alt="QR Code" class="h-40 w-40 rounded-lg bg-white p-2" />
+        <div class="space-y-2 text-sm text-slate-300">
+          <p><span class="text-slate-400">Joriy fayl:</span> <%= item.file.originalName %></p>
+          <p><span class="text-slate-400">MIME:</span> <%= item.file.mimeType %></p>
+          <a href="<%= item.qrLink %>" target="_blank" class="inline-block text-emerald-300 hover:text-emerald-200">
+            QR manzilini ochish
+          </a>
+        </div>
+      </div>
+    <% } %>
+
+    <form
+      action="<%= isEdit ? `/admin/qr/${item._id}?_method=PUT` : '/admin/qr' %>"
+      method="POST"
+      enctype="multipart/form-data"
+      class="space-y-4"
+    >
+      <div>
+        <label for="name" class="mb-1 block text-sm font-medium">Nomi</label>
+        <input
+          id="name"
+          name="name"
+          required
+          value="<%= item?.name || '' %>"
+          placeholder="Masalan: Promo video QR"
+          class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none ring-emerald-500 focus:ring"
+        />
+      </div>
+
+      <div>
+        <label for="file" class="mb-1 block text-sm font-medium">
+          Fayl <%= isEdit ? "(almashtirish ixtiyoriy)" : "(majburiy)" %>
+        </label>
+        <input
+          id="file"
+          type="file"
+          name="file"
+          <%= isEdit ? "" : "required" %>
+          class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 file:mr-3 file:rounded-md file:border-0 file:bg-emerald-600 file:px-3 file:py-1.5 file:text-white"
+        />
+        <p class="mt-1 text-xs text-slate-500">Video, rasm, pdf va boshqa barcha fayl turlari qabul qilinadi.</p>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-500">
+          <%= isEdit ? "Saqlash" : "Yaratish" %>
+        </button>
+        <a href="/admin/qr" class="rounded-lg bg-slate-800 px-4 py-2 font-medium hover:bg-slate-700">Bekor qilish</a>
+      </div>
+    </form>
+  </div>
+</section>

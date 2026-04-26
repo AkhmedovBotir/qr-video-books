@@ -1,0 +1,65 @@
+<section class="space-y-6">
+  <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <h2 class="text-2xl font-bold">Analitika</h2>
+    <p class="mt-1 text-sm text-slate-400">Skan statistikasi va eng ko'p ko'rilgan QR ma'lumotlari.</p>
+  </div>
+
+  <form action="/admin/analytics" method="GET" class="grid gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 sm:grid-cols-3">
+    <div>
+      <label class="mb-1 block text-sm text-slate-300">Boshlanish sanasi</label>
+      <input type="date" name="startDate" value="<%= filters.startDate %>" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+    </div>
+    <div>
+      <label class="mb-1 block text-sm text-slate-300">Tugash sanasi</label>
+      <input type="date" name="endDate" value="<%= filters.endDate %>" class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+    </div>
+    <div class="flex items-end gap-2">
+      <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">Filtrlash</button>
+      <a href="/admin/analytics" class="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium hover:bg-slate-700">Tozalash</a>
+    </div>
+  </form>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    <article class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+      <p class="text-sm text-slate-400">Umumiy skan soni</p>
+      <p class="mt-2 text-3xl font-bold text-emerald-300"><%= totalScans %></p>
+    </article>
+    <article class="rounded-xl border border-slate-800 bg-slate-900 p-5">
+      <p class="text-sm text-slate-400">Eng ko'p skanerlangan</p>
+      <% if (topScanned) { %>
+        <p class="mt-2 text-xl font-bold"><%= topScanned.name %></p>
+        <p class="text-sm text-slate-300"><%= topScanned.filteredScanCount %> marta</p>
+      <% } else { %>
+        <p class="mt-2 text-sm text-slate-300">Hali ma'lumot mavjud emas.</p>
+      <% } %>
+    </article>
+  </div>
+
+  <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-left text-sm">
+        <thead class="bg-slate-800/80 text-slate-200">
+          <tr>
+            <th class="px-4 py-3 font-medium">QR nomi</th>
+            <th class="px-4 py-3 font-medium">Filtr bo'yicha skan</th>
+            <th class="px-4 py-3 font-medium">Jami skan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!rows.length) { %>
+            <tr>
+              <td colspan="3" class="px-4 py-4 text-slate-400">Ma'lumot topilmadi.</td>
+            </tr>
+          <% } %>
+          <% rows.forEach((row) => { %>
+            <tr class="border-t border-slate-800">
+              <td class="px-4 py-3"><%= row.name %></td>
+              <td class="px-4 py-3"><%= row.filteredScanCount %></td>
+              <td class="px-4 py-3"><%= row.totalScanCount %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
