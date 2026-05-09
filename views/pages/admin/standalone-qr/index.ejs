@@ -1,0 +1,259 @@
+<section class="space-y-6">
+  <div>
+    <h2 class="text-2xl font-bold">Alohida QR yaratish</h2>
+    <p class="text-sm text-slate-400">Bu bo'lim hozirgi QR video/fayl tizimidan butunlay mustaqil ishlaydi.</p>
+  </div>
+
+  <form id="standaloneQrForm" class="grid gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-3">
+    <div>
+      <label class="mb-1 block text-sm text-slate-300">Nomi</label>
+      <input
+        id="standaloneQrName"
+        name="name"
+        required
+        placeholder="Masalan: Telegram kanal"
+        class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+      />
+    </div>
+    <div class="md:col-span-2">
+      <label class="mb-1 block text-sm text-slate-300">URL</label>
+      <input
+        id="standaloneQrUrl"
+        name="url"
+        required
+        placeholder="https://example.com"
+        class="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+      />
+    </div>
+    <div class="md:col-span-3 flex items-center gap-3">
+      <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">
+        QR yaratish
+      </button>
+      <p id="standaloneQrMessage" class="text-sm text-slate-300"></p>
+    </div>
+  </form>
+
+  <div id="standaloneQrGrid" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <% if (!items.length) { %>
+      <div class="rounded-xl border border-slate-800 bg-slate-900 p-5 text-sm text-slate-400">
+        Hozircha alohida QR yozuvlari yo'q.
+      </div>
+    <% } %>
+
+    <% items.forEach((item) => { %>
+      <article data-standalone-qr-id="<%= item.id %>" class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <p class="text-lg font-semibold"><%= item.name %></p>
+        <a href="<%= item.url %>" target="_blank" class="mt-1 block break-all text-xs text-sky-300 hover:text-sky-200">
+          <%= item.url %>
+        </a>
+        <img src="<%= item.qrImage %>" alt="Generated QR" class="mt-3 h-44 w-44 rounded-lg bg-white p-1" />
+        <div class="mt-3 flex gap-2">
+          <a
+            href="<%= item.qrImage %>"
+            download="standalone-qr-<%= item.name.replace(/[^a-zA-Z0-9_-]/g, '-') %>.png"
+            class="inline-block rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500"
+          >
+            QR rasmni yuklash
+          </a>
+          <button
+            type="button"
+            data-standalone-qr-delete="<%= item.id %>"
+            class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500"
+          >
+            O'chirish
+          </button>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+</section>
+
+<div id="deleteStandaloneQrModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 p-4">
+  <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5">
+    <h3 class="text-lg font-semibold">QR ni o'chirish</h3>
+    <p class="mt-2 text-sm text-slate-300">Haqiqatan ham ushbu QR ni o'chirmoqchimisiz?</p>
+    <div class="mt-4 flex justify-end gap-2">
+      <button
+        id="cancelDeleteStandaloneQr"
+        type="button"
+        class="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600"
+      >
+        Bekor qilish
+      </button>
+      <button
+        id="confirmDeleteStandaloneQr"
+        type="button"
+        class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
+      >
+        O'chirish
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const form = document.getElementById("standaloneQrForm");
+    const nameInput = document.getElementById("standaloneQrName");
+    const urlInput = document.getElementById("standaloneQrUrl");
+    const messageNode = document.getElementById("standaloneQrMessage");
+    const grid = document.getElementById("standaloneQrGrid");
+    const deleteModal = document.getElementById("deleteStandaloneQrModal");
+    const cancelDeleteBtn = document.getElementById("cancelDeleteStandaloneQr");
+    const confirmDeleteBtn = document.getElementById("confirmDeleteStandaloneQr");
+    let pendingDeleteId = "";
+    let pendingDeleteButton = null;
+
+    if (!form || !nameInput || !urlInput || !messageNode || !grid || !deleteModal || !cancelDeleteBtn || !confirmDeleteBtn) return;
+
+    const openDeleteModal = (itemId, button) => {
+      pendingDeleteId = itemId;
+      pendingDeleteButton = button;
+      deleteModal.classList.remove("hidden");
+      deleteModal.classList.add("flex");
+      document.body.classList.add("overflow-hidden");
+    };
+
+    const closeDeleteModal = () => {
+      pendingDeleteId = "";
+      pendingDeleteButton = null;
+      deleteModal.classList.add("hidden");
+      deleteModal.classList.remove("flex");
+      document.body.classList.remove("overflow-hidden");
+    };
+
+    const createCard = (item) => {
+      const card = document.createElement("article");
+      card.dataset.standaloneQrId = item.id;
+      card.className = "rounded-2xl border border-slate-800 bg-slate-900 p-4";
+      const safeName = String(item.name || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+      card.innerHTML = `
+        <p class="text-lg font-semibold"></p>
+        <a target="_blank" class="mt-1 block break-all text-xs text-sky-300 hover:text-sky-200"></a>
+        <img alt="Generated QR" class="mt-3 h-44 w-44 rounded-lg bg-white p-1" />
+        <div class="mt-3 flex gap-2">
+          <a class="inline-block rounded-lg bg-sky-600 px-3 py-2 text-sm font-medium text-white hover:bg-sky-500">QR rasmni yuklash</a>
+          <button type="button" class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500">O'chirish</button>
+        </div>
+      `;
+      card.querySelector("p").textContent = item.name;
+      const link = card.querySelector("a");
+      link.href = item.url;
+      link.textContent = item.url;
+      const image = card.querySelector("img");
+      image.src = item.qrImage;
+      const downloadLink = card.querySelectorAll("a")[1];
+      downloadLink.href = item.qrImage;
+      downloadLink.download = `standalone-qr-${safeName}.png`;
+      const deleteButton = card.querySelector("button");
+      deleteButton.dataset.standaloneQrDelete = item.id;
+      return card;
+    };
+
+    const bindDeleteHandlers = () => {
+      document.querySelectorAll("[data-standalone-qr-delete]").forEach((button) => {
+        if (button.dataset.boundDelete === "true") return;
+        button.dataset.boundDelete = "true";
+
+        button.addEventListener("click", () => {
+          const itemId = button.dataset.standaloneQrDelete;
+          if (!itemId) return;
+          openDeleteModal(itemId, button);
+        });
+      });
+    };
+
+    const deleteById = async () => {
+      if (!pendingDeleteId || !pendingDeleteButton) return;
+      pendingDeleteButton.disabled = true;
+      pendingDeleteButton.classList.add("opacity-70", "cursor-not-allowed");
+      messageNode.textContent = "O'chirilmoqda...";
+      messageNode.className = "text-sm text-slate-300";
+      confirmDeleteBtn.disabled = true;
+      confirmDeleteBtn.classList.add("opacity-70", "cursor-not-allowed");
+
+      try {
+        const response = await fetch(`/api/standalone-qr/${pendingDeleteId}`, {
+          method: "DELETE"
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "O'chirishda xatolik.");
+        }
+
+        const card = document.querySelector(`[data-standalone-qr-id="${pendingDeleteId}"]`);
+        if (card) {
+          card.remove();
+        }
+
+        if (!grid.children.length) {
+          const empty = document.createElement("div");
+          empty.className = "rounded-xl border border-slate-800 bg-slate-900 p-5 text-sm text-slate-400";
+          empty.textContent = "Hozircha alohida QR yozuvlari yo'q.";
+          grid.appendChild(empty);
+        }
+
+        messageNode.textContent = "QR o'chirildi.";
+        messageNode.className = "text-sm text-emerald-300";
+        closeDeleteModal();
+      } catch (error) {
+        pendingDeleteButton.disabled = false;
+        pendingDeleteButton.classList.remove("opacity-70", "cursor-not-allowed");
+        messageNode.textContent = error.message || "Xatolik yuz berdi.";
+        messageNode.className = "text-sm text-rose-300";
+      } finally {
+        confirmDeleteBtn.disabled = false;
+        confirmDeleteBtn.classList.remove("opacity-70", "cursor-not-allowed");
+      }
+    };
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      messageNode.textContent = "Yaratilmoqda...";
+      messageNode.className = "text-sm text-slate-300";
+
+      const payload = {
+        name: nameInput.value.trim(),
+        url: urlInput.value.trim()
+      };
+
+      try {
+        const response = await fetch("/api/standalone-qr", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "QR yaratishda xato.");
+        }
+
+        const emptyCard = grid.querySelector("div");
+        if (emptyCard && emptyCard.textContent.includes("Hozircha alohida QR")) {
+          emptyCard.remove();
+        }
+        grid.prepend(createCard(data.item));
+        bindDeleteHandlers();
+        form.reset();
+        messageNode.textContent = "QR muvaffaqiyatli yaratildi.";
+        messageNode.className = "text-sm text-emerald-300";
+      } catch (error) {
+        messageNode.textContent = error.message || "Xatolik yuz berdi.";
+        messageNode.className = "text-sm text-rose-300";
+      }
+    });
+
+    cancelDeleteBtn.addEventListener("click", closeDeleteModal);
+    confirmDeleteBtn.addEventListener("click", deleteById);
+    deleteModal.addEventListener("click", (event) => {
+      if (event.target === deleteModal) {
+        closeDeleteModal();
+      }
+    });
+
+    bindDeleteHandlers();
+  })();
+</script>

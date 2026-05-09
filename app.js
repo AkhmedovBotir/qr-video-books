@@ -8,12 +8,17 @@ const methodOverride = require("method-override");
 const expressLayouts = require("express-ejs-layouts");
 const session = require("express-session");
 const { MongoStore } = require("connect-mongo");
+const cors = require("cors");
 require("dotenv").config();
 
 const webRoutes = require("./routes/web.routes");
 const { attachAuthUser } = require("./middlewares/auth.middleware");
 
 const app = express();
+
+app.set("trust proxy", process.env.TRUST_PROXY === "0" ? false : Number(process.env.TRUST_PROXY) || 1);
+
+app.use(cors());
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -26,7 +31,12 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(methodOverride("_method"));
 app.use(compression());
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  })
+);
 app.use(morgan("dev"));
 app.use(
   session({

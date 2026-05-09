@@ -81,10 +81,8 @@
         const syncUi = () => {
           if (video.paused) {
             playPauseBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-            video.classList.add("blur-[1.5px]", "brightness-75");
           } else {
             playPauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-            video.classList.remove("blur-[1.5px]", "brightness-75");
           }
 
           const duration = Number.isFinite(video.duration) ? video.duration : 0;

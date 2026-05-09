@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Video kitoblar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-6">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">Video kitoblar</h1>
+        <p id="meta" class="mt-1 text-sm text-slate-400">Yuklanmoqda…</p>
+      </div>
+      <button
+        id="reload"
+        type="button"
+        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+      >
+        Yangilash
+      </button>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-8">
+    <div id="error" class="hidden rounded-xl border border-red-900/80 bg-red-950/40 px-4 py-3 text-sm text-red-200"></div>
+    <div
+      id="grid"
+      class="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+    ></div>
+  </main>
+
+  <!-- Modal -->
+  <div
+    id="video-modal"
+    class="fixed inset-0 z-50 hidden items-center justify-center p-4 sm:p-6"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+  >
+    <button
+      type="button"
+      id="modal-backdrop"
+      class="absolute inset-0 bg-black/75 backdrop-blur-sm"
+      aria-label="Yopish"
+    ></button>
+    <div
+      class="relative z-10 flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl shadow-black/60"
+    >
+      <div class="flex items-start justify-between gap-3 border-b border-slate-800 px-4 py-3 sm:px-5">
+        <h2 id="modal-title" class="min-w-0 flex-1 text-base font-semibold leading-snug text-slate-100 sm:text-lg"></h2>
+        <button
+          type="button"
+          id="modal-close"
+          class="shrink-0 rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          aria-label="Yopish"
+        >
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="aspect-video w-full min-h-[200px] bg-black">
+        <video
+          id="modal-video"
+          class="h-full w-full object-contain bg-black"
+          controls
+          playsinline
+          preload="auto"
+          crossorigin="anonymous"
+        ></video>
+      </div>
+      <p id="modal-video-fallback" class="hidden border-t border-slate-800 px-4 py-3 text-center text-sm text-amber-200/95"></p>
+    </div>
+  </div>
+
+  <script>
+    const API = 'https://qr.video-books.uz/api/videos';
+
+    const metaEl = document.getElementById('meta');
+    const gridEl = document.getElementById('grid');
+    const errEl = document.getElementById('error');
+    const reloadBtn = document.getElementById('reload');
+
+    const modalRoot = document.getElementById('video-modal');
+    const modalVideo = document.getElementById('modal-video');
+    const modalVideoFallback = document.getElementById('modal-video-fallback');
+    const modalTitleEl = document.getElementById('modal-title');
+    const modalBackdrop = document.getElementById('modal-backdrop');
+    const modalClose = document.getElementById('modal-close');
+
+    let lastVideos = [];
+
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+    }
+
+    function clearError() {
+      errEl.textContent = '';
+      errEl.classList.add('hidden');
+    }
+
+    function httpsMediaUrl(url) {
+      if (!url) return '';
+      return String(url).replace(/^http:\/\//i, 'https://');
+    }
+
+    function attrEscape(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    /** Banner uchun birinchi kadrdan keyingi freym — 0s ko‘pincha qora bo‘ladi. */
+    function primeCardVideoFrames(root) {
+      root.querySelectorAll('video[data-card-preview]').forEach((vid) => {
+        const bump = () => {
+          try {
+            const d = vid.duration;
+            if (d && !Number.isNaN(d) && d > 0) {
+              vid.currentTime = Math.min(0.25, Math.max(0.05, d * 0.02));
+            }
+          } catch (_) {}
+        };
+        vid.addEventListener('loadedmetadata', bump, { once: true });
+      });
+    }
+
+    function closeModal() {
+      modalVideo.pause();
+      modalVideo.removeAttribute('src');
+      modalVideo.innerHTML = '';
+      modalVideo.load();
+      modalVideoFallback.textContent = '';
+      modalVideoFallback.classList.add('hidden');
+      modalRoot.classList.add('hidden');
+      modalRoot.classList.remove('flex');
+      document.body.style.overflow = '';
+    }
+
+    /** API `mimeType` + streamUrl → <source>; ishlamasa `watchUrl` havolasi. */
+    function openModal(videoItem) {
+      const streamUrl = httpsMediaUrl(videoItem.streamUrl || '');
+      const watchUrl = httpsMediaUrl(videoItem.watchUrl || '');
+      const mimeType = videoItem.mimeType || 'video/mp4';
+      const title = videoItem.name || '';
+
+      if (!streamUrl) return;
+
+      modalTitleEl.textContent = title;
+      modalVideoFallback.classList.add('hidden');
+      modalVideoFallback.textContent = '';
+
+      modalVideo.innerHTML = '';
+      const source = document.createElement('source');
+      source.src = streamUrl;
+      source.type = mimeType;
+      modalVideo.appendChild(source);
+
+      modalRoot.classList.remove('hidden');
+      modalRoot.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+
+      modalVideo.addEventListener(
+        'error',
+        () => {
+          modalVideoFallback.textContent = '';
+          modalVideoFallback.appendChild(
+            document.createTextNode("Bu brauzerda to‘g‘ridan-to‘g‘ri ijro qiyin. ")
+          );
+          if (watchUrl) {
+            const a = document.createElement('a');
+            a.href = watchUrl;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.className = 'font-medium text-indigo-400 underline hover:text-indigo-300';
+            a.textContent = 'Videoni alohida sahifada ochish';
+            modalVideoFallback.appendChild(a);
+          } else {
+            modalVideoFallback.appendChild(document.createTextNode('Video yuklanmadi.'));
+          }
+          modalVideoFallback.classList.remove('hidden');
+        },
+        { once: true }
+      );
+
+      modalVideo.load();
+
+      modalVideo.addEventListener(
+        'canplay',
+        () => {
+          modalVideo.play().catch(() => {});
+        },
+        { once: true }
+      );
+    }
+
+    modalBackdrop.addEventListener('click', closeModal);
+    modalClose.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modalRoot.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+
+    const playIconSvg = `
+      <svg class="h-16 w-16 text-white/90 drop-shadow-lg transition group-hover:scale-105" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 5v14l11-7z"/>
+      </svg>
+    `;
+
+    function cardTpl(v, index) {
+      const safeName = String(v.name || '').replace(/</g, '&lt;');
+      const stream = httpsMediaUrl(v.streamUrl || '');
+      const streamAttr = stream ? attrEscape(stream) : '';
+
+      const bannerLayer = stream
+        ? `<video data-card-preview class="pointer-events-none absolute inset-0 h-full w-full object-cover" src="${streamAttr}" muted playsinline preload="metadata" crossorigin="anonymous"></video>
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/50"></div>`
+        : `<div class="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900"></div>`;
+
+      return `
+        <article
+          data-index="${index}"
+          tabindex="0"
+          class="group cursor-pointer overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-lg shadow-black/40 transition hover:border-indigo-500/40 hover:shadow-indigo-900/20 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-950"
+        >
+          <div class="relative aspect-video overflow-hidden bg-black">
+            ${bannerLayer}
+            <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3">
+              ${playIconSvg}
+              <span class="text-xs font-medium text-white/85 drop-shadow-md group-hover:text-white">Tanlash uchun bosing</span>
+            </div>
+          </div>
+          <div class="p-4">
+            <h2 class="line-clamp-3 text-sm font-medium leading-snug text-slate-100 sm:text-base pointer-events-none">
+              ${safeName}
+            </h2>
+            <button
+              type="button"
+              data-action="watch"
+              class="pointer-events-auto mt-3 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow hover:bg-indigo-500 focus:z-10 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-slate-900 sm:w-auto"
+            >
+              Ko‘rish
+            </button>
+          </div>
+        </article>
+      `;
+    }
+
+    function openCardByIndex(index) {
+      const v = lastVideos[index];
+      if (!v) return;
+      openModal(v);
+    }
+
+    gridEl.addEventListener('click', (e) => {
+      const article = e.target.closest('article[data-index]');
+      if (!article) return;
+      const idx = Number.parseInt(article.dataset.index, 10);
+      if (Number.isNaN(idx)) return;
+      openCardByIndex(idx);
+    });
+
+    gridEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const article = e.target.closest('article[data-index]');
+      if (!article) return;
+      e.preventDefault();
+      const idx = Number.parseInt(article.dataset.index, 10);
+      if (Number.isNaN(idx)) return;
+      openCardByIndex(idx);
+    });
+
+    async function load() {
+      clearError();
+      metaEl.textContent = 'Yuklanmoqda…';
+      gridEl.innerHTML = '';
+      closeModal();
+
+      try {
+        const res = await fetch(API);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        if (!data.success || !Array.isArray(data.videos)) {
+          throw new Error('Noto‘g‘ri javob formati');
+        }
+
+        lastVideos = data.videos;
+        metaEl.textContent = `${data.count ?? data.videos.length} ta video`;
+        gridEl.innerHTML = data.videos.map((v, i) => cardTpl(v, i)).join('');
+        primeCardVideoFrames(gridEl);
+      } catch (e) {
+        showError('Ma’lumot olinmadi: ' + (e && e.message ? e.message : String(e)));
+        metaEl.textContent = 'Xato';
+      }
+    }
+
+    reloadBtn.addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

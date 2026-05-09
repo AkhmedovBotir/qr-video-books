@@ -31,6 +31,10 @@ const qrItemSchema = new mongoose.Schema(
     scanLogs: {
       type: [Date],
       default: []
+    },
+    includeInVideoList: {
+      type: Boolean,
+      default: false
     }
   },
   {

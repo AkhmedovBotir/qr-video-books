@@ -50,6 +50,23 @@
     </div>
   <% } %>
 
+  <% if (items.length) { %>
+    <div class="rounded-xl border border-slate-800 bg-slate-900 p-4">
+      <form id="videoListForm" action="/admin/qr/video-list-selection" method="POST" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-200">
+          <input id="selectAllVideos" type="checkbox" class="h-4 w-4 rounded border-slate-600 bg-slate-950" />
+          Hammasini tanlash (faqat video)
+        </label>
+        <div class="flex items-center gap-2">
+          <span id="videoSelectedCount" class="text-xs text-slate-400">Tanlangan: 0</span>
+          <button type="submit" class="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-500">
+            Video ro'yxatni saqlash
+          </button>
+        </div>
+      </form>
+    </div>
+  <% } %>
+
   <div class="grid gap-4 lg:grid-cols-2">
     <% items.forEach((item) => { %>
       <article class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
@@ -63,6 +80,25 @@
             </a>
           </div>
           <img src="<%= item.qrImage %>" alt="QR Code" class="h-28 w-28 rounded-lg bg-white p-1" />
+        </div>
+
+        <div class="mt-3 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+          <% const isVideoFile = (item.file.mimeType || "").startsWith("video/"); %>
+          <label class="inline-flex items-center gap-2 text-sm <%= isVideoFile ? 'text-slate-200' : 'text-slate-500' %>">
+            <input
+              type="checkbox"
+              name="selectedIds"
+              value="<%= item._id %>"
+              form="videoListForm"
+              class="js-video-select h-4 w-4 rounded border-slate-600 bg-slate-950"
+              <%= item.includeInVideoList ? "checked" : "" %>
+              <%= isVideoFile ? "" : "disabled" %>
+            />
+            Video ro'yxat
+          </label>
+          <% if (!isVideoFile) { %>
+            <p class="mt-1 text-xs text-slate-500">Bu yozuv video emas, tanlab bo'lmaydi.</p>
+          <% } %>
         </div>
 
         <div class="mt-4 flex flex-wrap gap-2">
@@ -152,13 +188,12 @@
             <% if ((item.file.mimeType || "").startsWith("video/")) { %>
               <video
                 class="h-[34vh] w-full rounded-lg object-contain sm:h-[42vh] md:h-[50vh]"
-                autoplay
                 controls
                 playsinline
-                preload="metadata"
+                preload="none"
                 controlsList="nodownload noplaybackrate"
               >
-                <source src="/q/<%= item.qrToken %>/stream" type="<%= item.file.mimeType %>" />
+                <source data-stream-src="/q/<%= item.qrToken %>/stream" type="<%= item.file.mimeType %>" />
               </video>
             <% } else { %>
               <div class="flex h-[34vh] items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-300 sm:h-[42vh] md:h-[50vh]">
@@ -246,8 +281,8 @@
               <div class="rounded-lg border border-slate-700 bg-slate-950 p-3">
                 <p class="mb-2 text-sm text-slate-300">Joriy video/fayl</p>
                 <% if ((item.file.mimeType || "").startsWith("video/")) { %>
-                  <video class="h-40 w-full rounded-lg bg-black object-contain" controls preload="metadata">
-                    <source src="/q/<%= item.qrToken %>/stream" type="<%= item.file.mimeType %>" />
+                  <video class="h-40 w-full rounded-lg bg-black object-contain" controls preload="none">
+                    <source data-stream-src="/q/<%= item.qrToken %>/stream" type="<%= item.file.mimeType %>" />
                   </video>
                 <% } else { %>
                   <p class="text-sm text-slate-400"><%= item.file.originalName %></p>
@@ -291,10 +326,21 @@
     const closeButtons = document.querySelectorAll("[data-modal-close]");
     const dropzones = document.querySelectorAll("[data-dropzone]");
     const uploadForms = document.querySelectorAll(".js-upload-form");
+    const selectAllVideos = document.getElementById("selectAllVideos");
+    const videoCheckboxes = document.querySelectorAll(".js-video-select");
+    const videoSelectedCount = document.getElementById("videoSelectedCount");
 
     const openModal = (id) => {
       const modal = document.getElementById(id);
       if (!modal) return;
+      modal.querySelectorAll("video source[data-stream-src]").forEach((source) => {
+        if (!source.getAttribute("src")) {
+          source.setAttribute("src", source.dataset.streamSrc);
+        }
+      });
+      modal.querySelectorAll("video").forEach((video) => {
+        video.load();
+      });
       modal.classList.remove("hidden");
       document.body.classList.add("overflow-hidden");
     };
@@ -302,6 +348,14 @@
     const closeModal = (id) => {
       const modal = document.getElementById(id);
       if (!modal) return;
+      modal.querySelectorAll("video").forEach((video) => {
+        video.pause();
+        video.currentTime = 0;
+        video.querySelectorAll("source[data-stream-src]").forEach((source) => {
+          source.removeAttribute("src");
+        });
+        video.load();
+      });
       modal.classList.add("hidden");
       if (!document.querySelector('[id$="Modal"]:not(.hidden), [id*="Modal-"]:not(.hidden)')) {
         document.body.classList.remove("overflow-hidden");
@@ -412,6 +466,37 @@
         xhr.send(new FormData(form));
       });
     });
+
+    if (videoCheckboxes.length) {
+      const syncVideoSelectionUi = () => {
+        const enabled = Array.from(videoCheckboxes).filter((checkbox) => !checkbox.disabled);
+        const checkedCount = enabled.filter((checkbox) => checkbox.checked).length;
+        if (videoSelectedCount) {
+          videoSelectedCount.textContent = `Tanlangan: ${checkedCount}`;
+        }
+        if (selectAllVideos) {
+          selectAllVideos.checked = enabled.length > 0 && checkedCount === enabled.length;
+          selectAllVideos.indeterminate = checkedCount > 0 && checkedCount < enabled.length;
+        }
+      };
+
+      if (selectAllVideos) {
+        selectAllVideos.addEventListener("change", () => {
+          videoCheckboxes.forEach((checkbox) => {
+            if (!checkbox.disabled) {
+              checkbox.checked = selectAllVideos.checked;
+            }
+          });
+          syncVideoSelectionUi();
+        });
+      }
+
+      videoCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener("change", syncVideoSelectionUi);
+      });
+
+      syncVideoSelectionUi();
+    }
 
     const pageState = document.getElementById("qr-page-state");
     const pageModal = pageState?.dataset.modal || "";

@@ -5,7 +5,14 @@ const crypto = require("crypto");
 const QRCode = require("qrcode");
 const QrItem = require("../models/QrItem");
 
-const getAppUrl = (req) => process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+const getAppUrl = (req) => {
+  const explicit = process.env.APP_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  const xfProto = req.get("x-forwarded-proto");
+  const proto = xfProto ? xfProto.split(",")[0].trim() : req.protocol;
+  const host = req.get("x-forwarded-host") || req.get("host");
+  return `${proto}://${host}`;
+};
 const getQrLink = (req, token) => `${getAppUrl(req)}/q/${token}`;
 const getUploadFilePath = (filename) => path.join(__dirname, "..", "uploads", "qr", filename);
 
@@ -100,6 +107,65 @@ const getPublicQrPage = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+const getVideoListApi = async (req, res, next) => {
+  try {
+    const items = await QrItem.find({
+      includeInVideoList: true,
+      "file.mimeType": { $regex: "^video/", $options: "i" }
+    })
+      .sort({ createdAt: -1 })
+      .select("name qrToken file createdAt updatedAt");
+
+    const data = items.map((item) => ({
+      id: item._id,
+      name: item.name,
+      mimeType: item.file.mimeType,
+      originalName: item.file.originalName,
+      size: item.file.size,
+      qrToken: item.qrToken,
+      watchUrl: getQrLink(req, item.qrToken),
+      streamUrl: `${getAppUrl(req)}/q/${item.qrToken}/stream`,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }));
+
+    return res.json({
+      success: true,
+      count: data.length,
+      videos: data
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const updateVideoListSelection = async (req, res, next) => {
+  try {
+    const selectedIdsRaw = req.body.selectedIds;
+    const selectedIds = Array.isArray(selectedIdsRaw)
+      ? selectedIdsRaw
+      : selectedIdsRaw
+        ? [selectedIdsRaw]
+        : [];
+
+    await QrItem.updateMany({}, { $set: { includeInVideoList: false } });
+
+    if (selectedIds.length) {
+      await QrItem.updateMany(
+        {
+          _id: { $in: selectedIds },
+          "file.mimeType": { $regex: "^video/", $options: "i" }
+        },
+        { $set: { includeInVideoList: true } }
+      );
+    }
+
+    return res.redirect("/admin/qr");
+  } catch (error) {
+    return next(error);
   }
 };
 
@@ -222,7 +288,11 @@ const streamQrFile = async (req, res, next) => {
   try {
     const item = await QrItem.findOne({ qrToken: req.params.token });
     if (!item) {
-      return res.status(404).render("errors/404", { title: "QR topilmadi" });
+      res.status(404);
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      return res.send("Stream topilmadi");
     }
 
     const filePath = path.join(__dirname, "..", "uploads", "qr", item.file.filename);
@@ -233,6 +303,8 @@ const streamQrFile = async (req, res, next) => {
 
     res.setHeader("Content-Type", contentType);
     res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
@@ -271,6 +343,8 @@ const streamQrFile = async (req, res, next) => {
 module.exports = {
   getQrListPage,
   getPublicQrPage,
+  getVideoListApi,
+  updateVideoListSelection,
   createQrItem,
   updateQrItem,
   deleteQrItem,
