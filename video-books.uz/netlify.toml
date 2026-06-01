@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  # `order` funksiyasi repo ildizidagi `lib/` modulini import qiladi
+  included_files = ["lib/telegramOrderHtml.js"]
+
+[[redirects]]
+  from = "/api/order"
+  to = "/.netlify/functions/order"
+  status = 200
+
+# SPA (API yo'lidan keyin — aniqroq tartib Netlifyda birinchi mos keladi)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
