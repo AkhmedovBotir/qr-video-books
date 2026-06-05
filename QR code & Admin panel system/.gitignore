@@ -1,0 +1,6 @@
+node_modules
+.env
+public/css/style.css
+npm-debug.log*
+uploads/qr/*
+!uploads/qr/.gitkeep
